@@ -1,0 +1,5 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: sys-sys-soft-group7
+Upstream-Contact: Matheus Baptistella <mbapts@gmail.com>
+Source: https://github.com/courselab/sys-sys-soft-group7.git
+
