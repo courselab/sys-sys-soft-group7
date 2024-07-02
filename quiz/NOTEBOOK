@@ -7,32 +7,60 @@
 
 # RESPOSTAS 
 ## QUESTÃO 1) "Explain the results."
-Ao executar o programa `p1.c`, observou-se que em cada execução o endereço exibido na tela para a função `main` ficava diferente. Isso deve-se ao *Address Space Layout Randomization* (ASLR): o ASLR é um técnica de segurança empregada para prevenir *exploits*, como *Buffer Overflow*. Esta técnica funciona por meio da ramdomização dos endereços de memória utilizados por um sistema/processos, por isso o comportamento observado na execução do program `p1.c`: cada vez que o programa é executado, a função `main` recebe um endereço aleatório.
-
+Ao executar o programa `p1.c`, observou-se que em cada execução o endereço exibido na tela para a função `main` ficava 
+diferente. Isso deve-se ao *Address Space Layout Randomization* (ASLR): o ASLR é um técnica de segurança empregada para 
+prevenir *exploits*, como *Buffer Overflow*. Esta técnica funciona por meio da ramdomização dos endereços de memória 
+utilizados por um sistema/processos, por isso o comportamento observado na execução do program `p1.c`: cada vez que o 
+programa é executado, a função `main` recebe um endereço aleatório.
 
 ## QUESTÃO 2) "Fix design vulnerability."
-O programa contém uma vulnerabilidade clássica de *Buffer Overflow*: o buffer `char_key`possui 10 bytes em tamanho, entretanto, o valor que será salvo ali é lido através do uso da função `scanf`, a qual não limita a quantidade de bytes lidos. Desta forma, devido ao posicionamento das variáveis na *stack*, ao violar o limite de tamanho da variável `user_key` invadimos o espaço de memória da variável `verified` e escrevemos alguns bytes não-nulos lá. Como a checagem é feita utilizando o operador `!`, o if retornará true e o acesso é permitido.
+O programa contém uma vulnerabilidade clássica de *Buffer Overflow*: o buffer `char_key`possui 10 bytes em tamanho, 
+entretanto, o valor que será salvo ali é lido através do uso da função `scanf`, a qual não limita a quantidade de bytes 
+lidos. Desta forma, devido ao posicionamento das variáveis na *stack*, ao violar o limite de tamanho da variável 
+`user_key` invadimos o espaço de memória da variável `verified` e escrevemos alguns bytes não-nulos lá. Como a checagem 
+é feita utilizando o operador `!`, o if retornará true e o acesso é permitido.
 
-Para fazer com que o programa fique mais robusto pode-se utilizar a função `fgets`, a qual limita a quantidade de caracteres que serão armazenados em um endereço de memória. Além disso, pode-se exigir que a variável `verified` seja extamente igual ao valor 1, evitando que qualquer tipo de lixo na memória valide o acesso, mas não garantindo a completa segurança do programa.
+Para fazer com que o programa fique mais robusto pode-se utilizar a função `fgets`, a qual limita a quantidade de 
+caracteres que serão armazenados em um endereço de memória. Além disso, pode-se exigir que a variável `verified` seja 
+extamente igual ao valor 1, evitando que qualquer tipo de lixo na memória valide o acesso, mas não garantindo a 
+completa segurança do programa.
 
-A adição do *stack canary* não garante a segurança do programa pois para que o *overflow* fosse detectado, seria necessário que o buffer invadisse o espaço do *canary*, que está posicionado logo depois dos endereços de retorno e registradores e *frame pointers*, mas antes das variáveis. Portanto, se o *Buffer Overflow* invadir apenas o espaço de memória de `verified`, a vulnerabilidade ainda pode ser explorada.
+A adição do *stack canary* não garante a segurança do programa pois para que o *overflow* fosse detectado, seria 
+necessário que o buffer invadisse o espaço do *canary*, que está posicionado logo depois dos endereços de retorno e 
+registradores e *frame pointers*, mas antes das variáveis. Portanto, se o *Buffer Overflow* invadir apenas o espaço de 
+memória de `verified`, a vulnerabilidade ainda pode ser explorada.
 
 
 ## QUESTÃO 3) "Explain the function calls."
 ### a) 
-Em arquiteturas x86 (32 bits), quando uma função chama outra, isto é, utiliza a instrução `call`, os parâmetros que devem ser passados são posicionados na stack na ordem de direita para a esquerda. Neste caso, o parâmetro recebido por `foo` está em `eax`, portanto `push eax` posiciona o conteúdo do registrador no topo da *stack*. As definições e convenções impostas pela *Application Binary Interface* (ABI) permitem que os códigos binários de diferentes módulos possam interagir corretamente (todos seguem a mesma convenção).
+Em arquiteturas x86 (32 bits), quando uma função chama outra, isto é, utiliza a instrução `call`, os parâmetros que 
+devem ser passados são posicionados na stack na ordem de direita para a esquerda. Neste caso, o parâmetro recebido por 
+`foo` está em `eax`, portanto `push eax` posiciona o conteúdo do registrador no topo da *stack*. As definições e 
+convenções impostas pela *Application Binary Interface* (ABI) permitem que os códigos binários de diferentes módulos 
+possam interagir corretamente (todos seguem a mesma convenção).
 
 ### b)
-Para a conveção de x86, o valor de retorno é posicionado no registrador `eax`. Assim, como no item a), a convenção que determina que parâmetros devem ser passados via pilha, também define que o retorno deve ser posicionado via registrador (`eax`).
+Para a conveção de x86, o valor de retorno é posicionado no registrador `eax`. Assim, como no item a), a convenção que 
+determina que parâmetros devem ser passados via pilha, também define que o retorno deve ser posicionado via registrador 
+(`eax`).
 
 ### c)
-As duas primeiras linhas de `foo` são conhecidas como "prólogo" e são responsáveis por criar um novo *stack-frame* para a função chamada. Isto é feito por meio das instruções `push %ebp` (salva-se o valor do *frame* antigo na *stack*), `mov %esp,%ebp` (posiciona-se a base do novo *frame* no topo da *stack*). Novamente, se todas as chamadas seguirem este padrão, garante-se que cada função execute smente no seu espaço, sem afetar as informações dos outros.
+As duas primeiras linhas de `foo` são conhecidas como "prólogo" e são responsáveis por criar um novo *stack-frame* para 
+a função chamada. Isto é feito por meio das instruções `push %ebp` (salva-se o valor do *frame* antigo na *stack*), 
+`mov %esp,%ebp` (posiciona-se a base do novo *frame* no topo da *stack*). Novamente, se todas as chamadas seguirem este 
+padrão, garante-se que cada função execute smente no seu espaço, sem afetar as informações dos outros.
 
 ### d)
-Em `foo` e `bar` as linhas `sub $<some value>,%esp` têm o propósito de alocar memória para o *stack-frame* de cada uma dessas funções. Já no caso da função `main` a linha `and $0xfffffff0, %esp` serve o porpósito de garantir que o registrador `esp` seja múltiplo de 16 (alinhamento da *stack*). Ambas as linhas estão em conformidade com a ABI x86, a qual exige que a 8stack* seja alinhada em 16 bytes e que o espaço alocado também garanta este alinhamento.
+Em `foo` e `bar` as linhas `sub $<some value>,%esp` têm o propósito de alocar memória para o *stack-frame* de cada uma 
+dessas funções. Já no caso da função `main` a linha `and $0xfffffff0, %esp` serve o porpósito de garantir que o 
+registrador `esp` seja múltiplo de 16 (alinhamento da *stack*). Ambas as linhas estão em conformidade com a ABI x86, 
+a qual exige que a 8stack* seja alinhada em 16 bytes e que o espaço alocado também garanta este alinhamento.
 
 ### e)
-Ao mudar o tipo do retorno de `bar` é necessário garantir que o valor retornado por `eax` esteja correto, por isso adicionou-se a instrução `movsbl %al,%eax`, a qual coloca o valor do registrador `al` (que armazena 1 byte = char) para o valor de `eax`, sobrescrevendo seus 4 bytes. A vantagem de declarar as funções antes da main é que o compilador sabe o tipo do retorno e pode preparar instruções adequadas.
+Ao mudar o tipo do retorno de `bar` é necessário garantir que o valor retornado por `eax` esteja correto, por isso 
+adicionou-se a instrução `movsbl %al,%eax`, a qual coloca o valor do registrador `al` (que armazena 1 byte = char) para 
+o valor de `eax`, sobrescrevendo seus 4 bytes. A vantagem de declarar as funções antes da main é que o compilador sabe 
+o tipo do retorno e pode preparar instruções adequadas.
 
 
 ## QUESTÃO 4) "How libraries work."
@@ -40,17 +68,35 @@ Ao mudar o tipo do retorno de `bar` é necessário garantir que o valor retornad
 Ao compilar e executar os 3 programas, observou-se que o retorno de todos foi igual a string `Foo`.
 
 ### b)
-Ao comparar os tamanhos de cada arquivo tem-se que `p4-v1` > `p4-v2` > `p4-v3`. Observando os métodos de compilação de cada executável pode-se confirmar o motivo deste comportamento: `p4-v1` utiliza compilação estática para o arquivo-objeto `p4.o`, portanto qualquer código que ele necessite será incluído no binário. Já `p4-v2` utiliza compilação estática para a biblioteca `libp4.a`, sendo assim o tamanho fica menor pois ele acessa dinamicamente funções da `libc`. Finalmente, `p4-v3` tem o menor tamanho pois a biblioteca `libp4.so` é linkada dinamicamente, e o arquivo binário não precisa conter o código de cada componente da biblioteca.
+Ao comparar os tamanhos de cada arquivo tem-se que `p4-v1` > `p4-v2` > `p4-v3`. Observando os métodos de compilação de 
+cada executável pode-se confirmar o motivo deste comportamento: `p4-v1` utiliza compilação estática para o 
+arquivo-objeto `p4.o`, portanto qualquer código que ele necessite será incluído no binário. Já `p4-v2` utiliza 
+compilação estática para a biblioteca `libp4.a`, sendo assim o tamanho fica menor pois ele acessa dinamicamente funções 
+da `libc`. Finalmente, `p4-v3` tem o menor tamanho pois a biblioteca `libp4.so` é linkada dinamicamente, e o arquivo 
+binário não precisa conter o código de cada componente da biblioteca.
 
 ### c)
-Em `p4-v1` o símbolo `foo` está carregado na seção de texto (T). Em `p4-v2` observa-se o mesmo comportamento: `foo` na seção de texto (T). Por fim, em `p4-v3` o símbolo `foo` está indefinido (U).
+Em `p4-v1` o símbolo `foo` está carregado na seção de texto (T). Em `p4-v2` observa-se o mesmo comportamento: `foo` na 
+seção de texto (T). Por fim, em `p4-v3` o símbolo `foo` está indefinido (U).
 
 ### d)
-Em ambos `p4-v1` e `p4-v2` a única biblioteca requerida é `libc.so.6`, enquanto que em `p4-v3` também necessita da biblioteca `libp4.so`. Quando `p4-v3` é é carregado em memória, o *linker*/*loader* `ld.so` utiliza da informação presente no campo de *Shared librariy* para adicionar as respectivas bibliotecas no espaço de endereços do processo. Ele faz isso carregando as próprias bibliotecas em meória e depois resolvendo os símbolos.
+Em ambos `p4-v1` e `p4-v2` a única biblioteca requerida é `libc.so.6`, enquanto que em `p4-v3` também necessita da 
+biblioteca `libp4.so`. Quando `p4-v3` é é carregado em memória, o *linker*/*loader* `ld.so` utiliza da informação 
+presente no campo de *Shared librariy* para adicionar as respectivas bibliotecas no espaço de endereços do processo. 
+Ele faz isso carregando as próprias bibliotecas em meória e depois resolvendo os símbolos.
 
 ### e)
-Para o cenário no qual o executável será instalado em outros *hosts*, linkar o binário estaticamente garante que não há necessidade do *host* possuir as bibliotecas e códigos necessários instaladas em seu sistema, pois os mesmos já estão presentes no binário (para o caso da linkagem dinâmica seria necessário que o host instalasse as bibliotecas). Entretanto, a linkagem estática  aumenta o tamanho do binário, enquanto que na dinâmica o tamanho seria menor.
+Para o cenário no qual o executável será instalado em outros *hosts*, linkar o binário estaticamente garante que não há 
+necessidade do *host* possuir as bibliotecas e códigos necessários instaladas em seu sistema, pois os mesmos já estão 
+presentes no binário (para o caso da linkagem dinâmica seria necessário que o host instalasse as bibliotecas). 
+Entretanto, a linkagem estática  aumenta o tamanho do binário, enquanto que na dinâmica o tamanho seria menor.
 
-No caso do cenário onde é necessário fazer uma atualização na biblioteca, linkar dinamicamente facilita o processo de distribuir atualizações críticas, pois basta que o cliente atualize apenas a biblioteca, sem necessidade de recompilação. Já para a linkagem estática, seria necessário recompilar todos os binários que utilizam aquela biblioteca.
+No caso do cenário onde é necessário fazer uma atualização na biblioteca, linkar dinamicamente facilita o processo de 
+distribuir atualizações críticas, pois basta que o cliente atualize apenas a biblioteca, sem necessidade de 
+recompilação. Já para a linkagem estática, seria necessário recompilar todos os binários que utilizam aquela biblioteca.
 
-Finalmente, para o cenário no qual a biblioteca é utilizado por vários programas em um mesmo *host*, para a linkagem dinâmica é necessário garantir que os programas operem com suas respectivas versões da biblioteca (ou que todos utilizem uma mesma), porém o espaço ocupado em disco fica menor pois o código é compartilhado. Já no processo de linkagem estática, garante-se que cada binário opere com sua própria versão específica da biblioteca, entretanto o espaço ocupado será maior.
+Finalmente, para o cenário no qual a biblioteca é utilizado por vários programas em um mesmo *host*, para a linkagem 
+dinâmica é necessário garantir que os programas operem com suas respectivas versões da biblioteca (ou que todos 
+utilizem uma mesma), porém o espaço ocupado em disco fica menor pois o código é compartilhado. Já no processo de 
+linkagem estática, garante-se que cada binário opere com sua própria versão específica da biblioteca, entretanto o 
+espaço ocupado será maior.

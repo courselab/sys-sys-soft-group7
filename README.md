@@ -2,3 +2,5 @@
 
 ## Author
 Matheus Baptistella, 11223117
+
+OBS: as respostas para o exercício `try/quiz/` estão em `/quiz/NOTEBOOK`.
