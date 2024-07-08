@@ -1,0 +1,111 @@
+#    SPDX-FileCopyrightText: 2024 Matheus Baptistella <mbapts@gmail.com>
+#   
+#    SPDX-License-Identifier: GPL-3.0-or-later
+
+# ALUNO: Matheus Baptistella
+# NUSP: 11223117
+
+# Considerações iniciais
+Inicialmente, percebi que seria possível utilizar a variável de ambiente `LD_PRELOAD` para carregar alguma função customizada para possibilitar o exploit, já que os símbolos definidos por ela teriam precedência antes de qualquer outro. Ao analisar o binário `decode` com o ghidra (decompiler), observei que a função `hashcheck` era chamada logo no início da `main` e também percebi que ela era incluída a partir da biblioteca dinâmica `libcry.so`:
+```c
+undefined4 main(int param_1,char **param_2)
+
+{
+    char **ppcVar1;
+    char *pcVar2;
+
+    // Mais declarações de variáveis e inicialização delas...
+    
+    hashcheck();
+    
+    // Checa se algum parâmetro foi fornecido e então lê o token de acesso a partir da scanf, e envia o mesmo para `obf` para ser encriptado...
+
+    // Verifica se o token de acesso fornecido está correto
+    while ((*(int *)(token + local_220 * 4) != 0 &&
+            (iVar3 = strcmp(*(char **)(token + local_220 * 4),local_214), iVar3 != 0))) {
+        local_220 = local_220 + 1;
+    }
+    if (*(int *)(token + local_220 * 4) == 0) {
+        puts("Denied.");
+        uVar4 = 1;
+    }
+    else {
+        // Lê o arquivo que será decodificado e efetua sua decodificação enviando para `obf`
+        while (pcVar2 = fgets(local_114,0x100,__stream), pcVar2 != (char *)0x0) {
+        obf(local_114,_key,0xffffffff);
+        printf("%s",local_114);
+        }
+    }
+
+    // Verificação do stack canary...
+}
+```
+
+Ao analisar o binário com o comando `nm` e `objdump` oberva-se que o símbolo `hashcheck` é de fato resolvido dinamicamente, pois ele está indefinido (U) e precisa que a PLT defina ele:
+```bash
+    U hashcheck
+```
+
+```bash
+08049070 <hashcheck@plt>:
+    8049070:	ff 25 b4 bf 04 08    	jmp    DWORD PTR ds:0x804bfb4
+```
+
+Assim, pensei em customizar a função `hashcheck` para que:
+* (1) ela não fizesse mais a comparação do hash do binário, podendo alterá-lo (mas decidi não seguir com isso);
+* (2) projetasse algum exploit nela utilizando buffer overflow e format strings para que fosse possível vazar endereços de funções da libc (como do puts) para calcular o offset entre dela e alguma ponto do arquivo conhecido, podendo então encontrar o endereço da base da libc, e ai calcular a diferença até o ponto da `main` após o qual a verificação de chave ja foi feita, fazendo com que o arquivo fosse decriptado (mas também decidi não seguir com essa opção pois parecia que seria muito mais trabalhoso do que o que foi proposto para atividade).
+
+# Resposta
+Ao analizar mais profudamente a função `main`, notei que o check para validação do token de acesso é efetuado através da função `strcmp`: caso ela retorne 0 sempre, significa que o token concedido para acesso, após a sua encriptação pela `obf`, é igual ao token esperado. E, ao observar o `objdump` e `nm` notei que a função strcmp é inicializada também através do uso de uma biblioteca dinâmica, sendo que sua primeira invocação é justamente na checagem do token de acesso:
+```bash
+    U strcmp@GLIBC_2.0
+```
+
+```bash
+08049040 <strcmp@plt>:
+    8049040:	ff 25 a8 bf 04 08    	jmp    DWORD PTR ds:0x804bfa8
+```
+
+Portanto, criei o arquivo `fakecry.c` para criar uma função `strcmp` que retorne sempre 0:
+```c
+int strcmp(const char *s1, const char *s2) {
+    return 0;
+}
+```
+
+E compilei para uma biblioteca dinâmica com:
+```bash
+gcc -m32 -fPIC -shared fakecry.c -o libfakecry.so
+```
+
+E executei o binário a partir do comando:
+```bash
+LD_LIBRARY_PATH=. LD_PRELOAD=libfakecry.so ./decode secret.cry
+```
+
+Ou seja, o loader deve procurar no diretório atual e carregar a biblioteca `libfakecry.so` e como ela será carregada antes que qualquer outra, a resolução do símbolo `strcmp` será para o endereço da função contida na biblioteca customizada. Então o arquivo `decode` foi executado, passando o arquivo encriptado `secret.cry` para ele. O output do comando segue:
+```bash
+$ LD_LIBRARY_PATH=. LD_PRELOAD=libfakecry.so ./decode secret.cry
+ERROR: ld.so: object 'libfakecry.so' from LD_PRELOAD cannot be preloaded (wrong ELF class: ELFCLASS32): ignored.
+ERROR: ld.so: object 'libfakecry.so' from LD_PRELOAD cannot be preloaded (wrong ELF class: ELFCLASS32): ignored.
+ERROR: ld.so: object 'libfakecry.so' from LD_PRELOAD cannot be preloaded (wrong ELF class: ELFCLASS32): ignored.
+Access token: a
+https://drive.google.com/file/d/1n0w8dFS8zJ7flnAQI75uLkw40IzAVUdW
+```
+
+Mesmo com os erros, a biblioteca foi corretamente carregada e sobrescreveu a função original de `strcmp`, fazendo com que qualquer token inserido seja validado.
+
+# Como repoduzir o exploit
+Para reproduzir o exploit basta ir para o diretório que contém os arquivos (`/imf`):
+```bash
+make all
+```
+irá compilar a biblioteca que será utilizada. Então:
+```bash
+make run
+```
+para rodar o exploit com as variáveis de ambiente setadas. Daí é só inserir qualquer token de acesso. Por fim:
+```bash
+make clean
+```
+para remover a biblioteca criada.
