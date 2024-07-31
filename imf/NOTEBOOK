@@ -109,3 +109,7 @@ para rodar o exploit com as variáveis de ambiente setadas. Daí é só inserir 
 make clean
 ```
 para remover a biblioteca criada.
+
+~~~> Muita boa explicação e estratégia.
+
+~~~>> 10

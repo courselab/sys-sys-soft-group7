@@ -13,6 +13,8 @@ prevenir *exploits*, como *Buffer Overflow*. Esta técnica funciona por meio da 
 utilizados por um sistema/processos, por isso o comportamento observado na execução do program `p1.c`: cada vez que o 
 programa é executado, a função `main` recebe um endereço aleatório.
 
+~~~>> 2.5
+
 ## QUESTÃO 2) "Fix design vulnerability."
 O programa contém uma vulnerabilidade clássica de *Buffer Overflow*: o buffer `char_key`possui 10 bytes em tamanho, 
 entretanto, o valor que será salvo ali é lido através do uso da função `scanf`, a qual não limita a quantidade de bytes 
@@ -30,6 +32,7 @@ necessário que o buffer invadisse o espaço do *canary*, que está posicionado 
 registradores e *frame pointers*, mas antes das variáveis. Portanto, se o *Buffer Overflow* invadir apenas o espaço de 
 memória de `verified`, a vulnerabilidade ainda pode ser explorada.
 
+~~~>> 2.5
 
 ## QUESTÃO 3) "Explain the function calls."
 ### a) 
@@ -62,6 +65,7 @@ adicionou-se a instrução `movsbl %al,%eax`, a qual coloca o valor do registrad
 o valor de `eax`, sobrescrevendo seus 4 bytes. A vantagem de declarar as funções antes da main é que o compilador sabe 
 o tipo do retorno e pode preparar instruções adequadas.
 
+~~~>> 2.5
 
 ## QUESTÃO 4) "How libraries work."
 ### a)
@@ -75,9 +79,17 @@ compilação estática para a biblioteca `libp4.a`, sendo assim o tamanho fica m
 da `libc`. Finalmente, `p4-v3` tem o menor tamanho pois a biblioteca `libp4.so` é linkada dinamicamente, e o arquivo 
 binário não precisa conter o código de cada componente da biblioteca.
 
+~~~> Não é bem isso.
+
+     p4-v1 linka estaticamente, concatena todos os objetos passados na linha de comando
+     p4-v2 linka também estaticamente, mas concatena apenas os objetos necessários (por isso é menor)
+     p4-v3 linka dinamicamente, não concatena (por isso, ainda menor)
+
 ### c)
 Em `p4-v1` o símbolo `foo` está carregado na seção de texto (T). Em `p4-v2` observa-se o mesmo comportamento: `foo` na 
 seção de texto (T). Por fim, em `p4-v3` o símbolo `foo` está indefinido (U).
+
+~~~> E qual a explicação?
 
 ### d)
 Em ambos `p4-v1` e `p4-v2` a única biblioteca requerida é `libc.so.6`, enquanto que em `p4-v3` também necessita da 
@@ -100,3 +112,7 @@ dinâmica é necessário garantir que os programas operem com suas respectivas v
 utilizem uma mesma), porém o espaço ocupado em disco fica menor pois o código é compartilhado. Já no processo de 
 linkagem estática, garante-se que cada binário opere com sua própria versão específica da biblioteca, entretanto o 
 espaço ocupado será maior.
+
+~~~> Creio o mais importante não seja "espaço ocupado em disco", mas "em RAM".
+
+~~~> 2.0
